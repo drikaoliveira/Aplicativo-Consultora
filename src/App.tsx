@@ -5,6 +5,7 @@ import { isConfigured, supabase } from './lib/supabase'
 import BottomNav from './components/BottomNav'
 import Login from './pages/Login'
 import NovaSenha from './pages/NovaSenha'
+import TrocarSenha from './pages/TrocarSenha'
 import Inicio from './pages/Inicio'
 import Cobrar from './pages/Cobrar'
 import CobrarBairro from './pages/CobrarBairro'
@@ -67,6 +68,7 @@ export default function App() {
         <Route path="/produtos" element={<Produtos />} />
         <Route path="/produtos/importar" element={<ImportarProdutos />} />
         <Route path="/nova-senha" element={<NovaSenha />} />
+        <Route path="/trocar-senha" element={<TrocarSenha />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <BottomNav />

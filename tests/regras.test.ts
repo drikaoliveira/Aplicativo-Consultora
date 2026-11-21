@@ -5,6 +5,7 @@ import { codigosEstragados, guessColumns, toProducts } from '../src/lib/csv'
 import { agruparPorBairro } from '../src/lib/cobranca'
 import { adicionar, carrinhoValido, descontoCarrinho, totalCarrinho } from '../src/lib/carrinho'
 import { linhasDaFicha } from '../src/pages/Ficha'
+import { validarNovaSenha } from '../src/pages/TrocarSenha'
 import { juntarProdutos } from '../src/lib/api'
 import type { Product } from '../src/lib/types'
 import type { CustomerBalance, Entry } from '../src/lib/types'
@@ -144,5 +145,15 @@ describe('catálogo central + meus produtos', () => {
     let c = adicionar([], { product_id: 'x', origem: 'catalogo', nome: 'A', precoUnitario: '1', precoTabela: 1 })
     c = adicionar(c, { product_id: 'x', origem: 'pessoal', nome: 'B', precoUnitario: '1', precoTabela: 1 })
     expect(c.length).toBe(2)
+  })
+})
+
+describe('trocar senha', () => {
+  it('valida a senha nova antes de enviar', () => {
+    expect(validarNovaSenha('', 'abcdef', 'abcdef')).toMatch(/senha que você usa/)
+    expect(validarNovaSenha('123456', 'abc', 'abc')).toMatch(/6 caracteres/)
+    expect(validarNovaSenha('123456', 'abcdef', 'abcdeg')).toMatch(/não estão iguais/)
+    expect(validarNovaSenha('123456', '123456', '123456')).toMatch(/igual à atual/)
+    expect(validarNovaSenha('123456', 'flor2026', 'flor2026')).toBeNull()
   })
 })

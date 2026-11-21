@@ -44,6 +44,7 @@ export default function Mais() {
         <Link className="btn claro" to="/produtos">🧴 Produtos</Link>
         <Link className="btn claro" to="/produtos/importar">📥 Importar produtos (planilha)</Link>
         <button className="btn claro" onClick={exportar}>💾 Baixar cópia dos dados</button>
+        <Link className="btn claro" to="/trocar-senha">🔑 Trocar minha senha</Link>
         {msg && <p className="detalhe">{msg}</p>}
         <button className="btn contorno" onClick={() => supabase.auth.signOut()}>Sair</button>
       </div>
