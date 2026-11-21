@@ -3,7 +3,8 @@ export interface ItemCarrinho {
   product_id: string | null
   nome: string
   quantidade: number
-  precoUnitario: string // texto digitado, ex.: "129,90"
+  precoUnitario: string // texto digitado, ex.: "129,90" (preço vendido, editável)
+  precoTabela: number | null // preço do catálogo, só para referência
 }
 
 import { parseMoney } from './format'
@@ -18,6 +19,18 @@ export function totalCarrinho(itens: ItemCarrinho[]): number {
 }
 
 /** Soma 1 se o produto já está no carrinho; senão adiciona. */
+/** Desconto da linha em relação ao preço de tabela (0 se não houver tabela ou se vendeu acima). */
+export function descontoItem(i: ItemCarrinho): number {
+  if (i.precoTabela === null) return 0
+  const vendido = parseMoney(i.precoUnitario)
+  if (vendido === null) return 0
+  return Math.max(0, Math.round((i.precoTabela - vendido) * i.quantidade * 100) / 100)
+}
+
+export function descontoCarrinho(itens: ItemCarrinho[]): number {
+  return Math.round(itens.reduce((s, i) => s + descontoItem(i), 0) * 100) / 100
+}
+
 export function adicionar(itens: ItemCarrinho[], novo: Omit<ItemCarrinho, 'chave' | 'quantidade'>): ItemCarrinho[] {
   if (novo.product_id) {
     const i = itens.findIndex((x) => x.product_id === novo.product_id)

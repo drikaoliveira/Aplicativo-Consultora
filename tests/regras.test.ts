@@ -3,7 +3,7 @@ import { daysBetween, money, parseMoney, dateBR } from '../src/lib/format'
 import { mapsRouteLink, whatsappNumber, chargeMessage } from '../src/lib/links'
 import { guessColumns, toProducts } from '../src/lib/csv'
 import { agruparPorBairro } from '../src/lib/cobranca'
-import { adicionar, carrinhoValido, totalCarrinho } from '../src/lib/carrinho'
+import { adicionar, carrinhoValido, descontoCarrinho, totalCarrinho } from '../src/lib/carrinho'
 import { linhasDaFicha } from '../src/pages/Ficha'
 import type { CustomerBalance, Entry } from '../src/lib/types'
 
@@ -105,13 +105,15 @@ describe('importação do PDV', () => {
 
 describe('carrinho', () => {
   it('soma quantidade quando o mesmo produto é lido de novo', () => {
-    let it1 = adicionar([], { product_id: 'p1', nome: 'Kaiak', precoUnitario: '129,90' })
-    it1 = adicionar(it1, { product_id: 'p1', nome: 'Kaiak', precoUnitario: '129,90' })
-    it1 = adicionar(it1, { product_id: null, nome: 'Presente', precoUnitario: '' })
+    let it1 = adicionar([], { product_id: 'p1', nome: 'Kaiak', precoUnitario: '129,90', precoTabela: 159.9 })
+    it1 = adicionar(it1, { product_id: 'p1', nome: 'Kaiak', precoUnitario: '129,90', precoTabela: 159.9 })
+    it1 = adicionar(it1, { product_id: null, nome: 'Presente', precoUnitario: '', precoTabela: null })
     expect(it1[0].quantidade).toBe(2)
     expect(carrinhoValido(it1)).toBe('Falta o valor de "Presente".')
     it1[1].precoUnitario = '20'
     expect(carrinhoValido(it1)).toBeNull()
     expect(totalCarrinho(it1)).toBe(279.8)
+    // promoção: tabela 159,90, vendido 129,90, 2 unidades
+    expect(descontoCarrinho(it1)).toBe(60)
   })
 })

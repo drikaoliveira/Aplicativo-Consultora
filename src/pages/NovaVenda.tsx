@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { addSale, findProductByBarcode, getBalance, recentDescriptions, saveProduct, searchProducts } from '../lib/api'
-import { adicionar, carrinhoValido, precoTexto, totalCarrinho, totalItem, type ItemCarrinho } from '../lib/carrinho'
+import { adicionar, carrinhoValido, descontoCarrinho, descontoItem, precoTexto, totalCarrinho, totalItem, type ItemCarrinho } from '../lib/carrinho'
 import { money, normalize, parseMoney, todayISO } from '../lib/format'
 import type { CustomerBalance, Product } from '../lib/types'
 import Topo from '../components/Topo'
@@ -49,7 +49,7 @@ export default function NovaVenda() {
     try {
       const p = await findProductByBarcode(codigo)
       if (p) {
-        setItens((it) => adicionar(it, { product_id: p.id, nome: p.name, precoUnitario: precoTexto(p.price) }))
+        setItens((it) => adicionar(it, { product_id: p.id, nome: p.name, precoUnitario: precoTexto(p.price), precoTabela: p.price }))
         setAviso(`✓ ${p.name}`)
         setTimeout(() => setAviso(null), 2500)
       } else {
@@ -66,7 +66,7 @@ export default function NovaVenda() {
     if (!novoCodigo || !novoNome.trim()) return
     try {
       const p = await saveProduct({ barcode: novoCodigo, name: novoNome, price: parseMoney(novoPreco) })
-      setItens((it) => adicionar(it, { product_id: p.id, nome: p.name, precoUnitario: novoPreco }))
+      setItens((it) => adicionar(it, { product_id: p.id, nome: p.name, precoUnitario: novoPreco, precoTabela: p.price === null ? null : Number(p.price) }))
       setNovoCodigo(null)
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e))
@@ -74,13 +74,13 @@ export default function NovaVenda() {
   }
 
   function escolherProduto(p: Product) {
-    setItens((it) => adicionar(it, { product_id: p.id, nome: p.name, precoUnitario: precoTexto(p.price) }))
+    setItens((it) => adicionar(it, { product_id: p.id, nome: p.name, precoUnitario: precoTexto(p.price), precoTabela: p.price }))
     setBusca('')
   }
 
   function adicionarDigitado(nome: string) {
     if (!nome.trim()) return
-    setItens((it) => adicionar(it, { product_id: null, nome: nome.trim(), precoUnitario: '' }))
+    setItens((it) => adicionar(it, { product_id: null, nome: nome.trim(), precoUnitario: '', precoTabela: null }))
     setBusca('')
   }
 
@@ -183,18 +183,30 @@ export default function NovaVenda() {
             </div>
             <input
               inputMode="decimal"
-              placeholder="Valor R$"
+              placeholder="Preço R$"
               aria-label={`Valor de ${i.nome}`}
               value={i.precoUnitario}
               onChange={(e) => mudar(i.chave, { precoUnitario: e.target.value })}
             />
           </div>
+          {i.precoTabela !== null && (
+            <p className="detalhe" style={{ textAlign: 'right' }}>
+              Tabela {money(i.precoTabela)}
+              {descontoItem(i) > 0 && <b style={{ color: 'var(--verde)' }}> · desconto {money(descontoItem(i))}</b>}
+            </p>
+          )}
           {i.quantidade > 1 && <p className="detalhe" style={{ textAlign: 'right' }}>{i.quantidade} × = {money(totalItem(i))}</p>}
         </div>
       ))}
 
       {itens.length > 0 && (
         <>
+          {descontoCarrinho(itens) > 0 && (
+            <div className="linha detalhe" style={{ justifyContent: 'space-between', padding: '10px 4px 0' }}>
+              <span>Desconto dado</span>
+              <span style={{ flex: 0, whiteSpace: 'nowrap' }}>{money(descontoCarrinho(itens))}</span>
+            </div>
+          )}
           <div className="total">
             <span>Total</span>
             <span>{money(total)}</span>
