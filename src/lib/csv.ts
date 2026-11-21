@@ -1,0 +1,59 @@
+import { normalize, onlyDigits, parseMoney } from './format'
+
+export interface ColumnGuess {
+  barcode: string | null
+  name: string | null
+  price: string | null
+  code: string | null
+}
+
+const PATTERNS: Record<keyof ColumnGuess, RegExp[]> = {
+  barcode: [/ean/, /gtin/, /barra/, /cod.*bar/],
+  name: [/descri/, /^nome/, /produto/],
+  price: [/preco.*venda/, /preco/, /valor/, /pv/],
+  code: [/^cod(igo)?$/, /cod.*(prod|natura|interno|ref)/, /^ref/, /sku/],
+}
+
+/** Tenta adivinhar quais colunas do arquivo do PDV são código de barras, nome e preço. */
+export function guessColumns(headers: string[]): ColumnGuess {
+  const used = new Set<string>()
+  const pick = (key: keyof ColumnGuess): string | null => {
+    for (const re of PATTERNS[key]) {
+      const h = headers.find((x) => !used.has(x) && re.test(normalize(x)))
+      if (h) {
+        used.add(h)
+        return h
+      }
+    }
+    return null
+  }
+  // ordem importa: código de barras antes do "código" genérico
+  const barcode = pick('barcode')
+  const name = pick('name')
+  const price = pick('price')
+  const code = pick('code')
+  return { barcode, name, price, code }
+}
+
+export interface ProductRow {
+  barcode: string | null
+  code: string | null
+  name: string
+  price: number | null
+}
+
+/** Converte as linhas do CSV em produtos, descartando linhas sem nome. Último registro do mesmo código vence. */
+export function toProducts(rows: Record<string, string>[], cols: ColumnGuess): ProductRow[] {
+  const byKey = new Map<string, ProductRow>()
+  let anon = 0
+  for (const r of rows) {
+    const name = (cols.name ? r[cols.name] : '')?.trim()
+    if (!name) continue
+    const barcode = cols.barcode ? onlyDigits(r[cols.barcode]) || null : null
+    const code = cols.code ? (r[cols.code] ?? '').trim() || null : null
+    const price = cols.price ? parseMoney(r[cols.price]) : null
+    const key = barcode ?? `__sem_codigo_${anon++}`
+    byKey.set(key, { barcode, code, name, price })
+  }
+  return [...byKey.values()]
+}
