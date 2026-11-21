@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { daysBetween, money, parseMoney, dateBR } from '../src/lib/format'
 import { mapsRouteLink, whatsappNumber, chargeMessage } from '../src/lib/links'
-import { guessColumns, toProducts } from '../src/lib/csv'
+import { codigosEstragados, guessColumns, toProducts } from '../src/lib/csv'
 import { agruparPorBairro } from '../src/lib/cobranca'
 import { adicionar, carrinhoValido, descontoCarrinho, totalCarrinho } from '../src/lib/carrinho'
 import { linhasDaFicha } from '../src/pages/Ficha'
@@ -100,6 +100,18 @@ describe('importação do PDV', () => {
       { barcode: '7891033123456', code: '12345', name: 'Kaiak Feminino 100 ml', price: 149.9 },
       { barcode: null, code: null, name: 'Sacola', price: null },
     ])
+  })
+})
+
+describe('códigos cortados pelo Excel', () => {
+  it('detecta notação científica e não usa o código quebrado', () => {
+    const rows = [
+      { EAN: '7,89103E+12', Nome: 'Kaiak' },
+      { EAN: '7891033123456', Nome: 'Ekos' },
+    ]
+    expect(codigosEstragados(rows, 'EAN')).toBe(1)
+    const p = toProducts(rows, { barcode: 'EAN', name: 'Nome', price: null, code: null })
+    expect(p.map((x) => x.barcode)).toEqual([null, '7891033123456'])
   })
 })
 

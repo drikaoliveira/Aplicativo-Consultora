@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Papa from 'papaparse'
 import { importProducts } from '../lib/api'
-import { guessColumns, toProducts, type ColumnGuess } from '../lib/csv'
+import { codigosEstragados, guessColumns, toProducts, type ColumnGuess } from '../lib/csv'
 import { money } from '../lib/format'
 import Topo from '../components/Topo'
 
@@ -48,6 +48,7 @@ export default function ImportarProdutos() {
 
   const produtos = mapa.name ? toProducts(linhas, mapa) : []
   const comCodigo = produtos.filter((p) => p.barcode).length
+  const estragados = codigosEstragados(linhas, mapa.barcode)
 
   async function importar() {
     setErro(null)
@@ -92,6 +93,12 @@ export default function ImportarProdutos() {
           <p className="detalhe">
             {produtos.length} produtos ({comCodigo} com código de barras) de {linhas.length} linhas.
           </p>
+          {estragados > 0 && (
+            <p className="erro">
+              {estragados} código(s) de barras vieram cortados pelo Excel (ex.: 7,89103E+12). Esses produtos entram sem código. Para corrigir: no
+              Excel, selecione a coluna do código → Formatar células → Texto, salve de novo como CSV e importe outra vez.
+            </p>
+          )}
           {produtos.slice(0, 5).map((p, i) => (
             <div key={i} className="cartao item-lista">
               <div>

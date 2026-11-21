@@ -49,11 +49,22 @@ export function toProducts(rows: Record<string, string>[], cols: ColumnGuess): P
   for (const r of rows) {
     const name = (cols.name ? r[cols.name] : '')?.trim()
     if (!name) continue
-    const barcode = cols.barcode ? onlyDigits(r[cols.barcode]) || null : null
+    const bruto = cols.barcode ? (r[cols.barcode] ?? '').trim() : ''
+    // código em notação científica (Excel) está incompleto: não usar
+    const barcode = bruto && !/e\+?\d+/i.test(bruto) ? onlyDigits(bruto) || null : null
     const code = cols.code ? (r[cols.code] ?? '').trim() || null : null
     const price = cols.price ? parseMoney(r[cols.price]) : null
     const key = barcode ?? `__sem_codigo_${anon++}`
     byKey.set(key, { barcode, code, name, price })
   }
   return [...byKey.values()]
+}
+
+/**
+ * O Excel às vezes salva códigos de barras como "7,89103E+12", perdendo dígitos.
+ * Conta quantas linhas têm esse problema na coluna escolhida.
+ */
+export function codigosEstragados(rows: Record<string, string>[], col: string | null): number {
+  if (!col) return 0
+  return rows.filter((r) => /\d[.,]?\d*e\+?\d+/i.test((r[col] ?? '').trim())).length
 }
