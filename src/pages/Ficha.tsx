@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getBalance, listEntries, reverseEntry } from '../lib/api'
-import { dateBR, money } from '../lib/format'
+import { addOpeningBalance, getBalance, listEntries, reverseEntry } from '../lib/api'
+import { dateBR, money, parseMoney, todayISO } from '../lib/format'
 import { addressText, hasAddress, mapsSearchLink } from '../lib/links'
 import { PAYMENT_LABEL, type Entry } from '../lib/types'
 import { useCarregar } from '../components/useCarregar'
@@ -38,6 +38,21 @@ export default function Ficha() {
   const [corrigir, setCorrigir] = useState<Linha | null>(null)
   const [motivo, setMotivo] = useState('')
   const [erroCorrecao, setErroCorrecao] = useState<string | null>(null)
+  const [saldoInicial, setSaldoInicial] = useState('')
+  const [erroSaldo, setErroSaldo] = useState<string | null>(null)
+
+  async function lancarSaldoInicial() {
+    const v = parseMoney(saldoInicial)
+    if (!v || v <= 0) return setErroSaldo('Digite quanto ela já devia. Ex.: 150,00')
+    setErroSaldo(null)
+    try {
+      await addOpeningBalance(id, v, todayISO())
+      setSaldoInicial('')
+      recarregar()
+    } catch (e) {
+      setErroSaldo(e instanceof Error ? e.message : String(e))
+    }
+  }
 
   async function confirmarCorrecao() {
     if (!corrigir) return
@@ -95,7 +110,15 @@ export default function Ficha() {
 
       <h2>Ficha</h2>
       {linhas.length === 0 ? (
-        <p className="vazio">Nenhum lançamento ainda.</p>
+        <div className="cartao">
+          <p><b>Ficha nova.</b> Ela já devia alguma coisa antes do app?</p>
+          <label htmlFor="saldo-inicial">Saldo anterior</label>
+          <input id="saldo-inicial" inputMode="decimal" placeholder="0,00" value={saldoInicial} onChange={(e) => setSaldoInicial(e.target.value)} />
+          {erroSaldo && <p className="erro">{erroSaldo}</p>}
+          <button className="btn claro" style={{ marginTop: 10 }} onClick={lancarSaldoInicial}>
+            Lançar saldo anterior
+          </button>
+        </div>
       ) : (
         <div style={{ overflowX: 'auto' }}>
         <table className="ficha">
