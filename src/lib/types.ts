@@ -50,14 +50,20 @@ export interface Entry {
   delta: number
   payment_method: PaymentMethod | null
   product_id: string | null
+  catalog_product_id: string | null
   sale_group: string | null
   reverses_entry_id: string | null
   occurred_on: string
   created_at: string
 }
 
+/** 'catalogo' = catálogo central (Natura), igual para todas; 'pessoal' = produtos da própria consultora. */
+export type Origem = 'catalogo' | 'pessoal'
+
 export interface Product {
   id: string
+  origem: Origem
+  brand: string | null
   barcode: string | null
   code: string | null
   name: string

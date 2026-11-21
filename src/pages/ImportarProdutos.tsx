@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Papa from 'papaparse'
-import { importProducts } from '../lib/api'
+import { importProducts, isAdmin } from '../lib/api'
+import type { Origem } from '../lib/types'
 import { codigosEstragados, guessColumns, toProducts, type ColumnGuess } from '../lib/csv'
 import { money } from '../lib/format'
 import Topo from '../components/Topo'
@@ -29,6 +30,15 @@ export default function ImportarProdutos() {
   const [progresso, setProgresso] = useState<number | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const [admin, setAdmin] = useState(false)
+  const [destino, setDestino] = useState<Origem>('pessoal')
+
+  useEffect(() => {
+    isAdmin().then((a) => {
+      setAdmin(a)
+      if (a) setDestino('catalogo')
+    })
+  }, [])
 
   async function abrir(file: File | undefined) {
     if (!file) return
@@ -54,7 +64,7 @@ export default function ImportarProdutos() {
     setErro(null)
     setProgresso(0)
     try {
-      const n = await importProducts(produtos, setProgresso)
+      const n = await importProducts(produtos, destino, setProgresso)
       setMsg(`${n} produtos importados. Os que já existiam (mesmo código de barras) foram atualizados.`)
       setLinhas([])
     } catch (e) {
@@ -70,6 +80,20 @@ export default function ImportarProdutos() {
       <p className="detalhe">
         Escolha a planilha exportada do sistema da loja, salva em <b>CSV</b>. O app tenta reconhecer as colunas sozinho; confira abaixo.
       </p>
+      {admin && (
+        <>
+          <label>Para onde vão os produtos?</label>
+          <div className="pilha">
+            <button className={'btn pequeno ' + (destino === 'catalogo' ? '' : 'contorno')} onClick={() => setDestino('catalogo')}>
+              🌿 Catálogo Natura (todas as consultoras)
+            </button>
+            <button className={'btn pequeno ' + (destino === 'pessoal' ? '' : 'contorno')} onClick={() => setDestino('pessoal')}>
+              👤 Meus produtos (só eu vejo)
+            </button>
+          </div>
+        </>
+      )}
+      {!admin && <p className="detalhe">Os produtos vão para “Meus produtos” (outras marcas). O catálogo Natura já vem pronto.</p>}
       <input type="file" accept=".csv,text/csv,.txt,.xls,.xlsx" onChange={(e) => abrir(e.target.files?.[0])} style={{ marginTop: 10 }} />
       {erro && <p className="erro">{erro}</p>}
       {msg && <p className="sucesso">{msg}</p>}
@@ -109,7 +133,7 @@ export default function ImportarProdutos() {
             </div>
           ))}
           <button className="btn" style={{ marginTop: 16 }} disabled={!mapa.name || produtos.length === 0 || progresso !== null} onClick={importar}>
-            {progresso !== null ? `Importando… ${progresso}/${produtos.length}` : `Importar ${produtos.length} produtos`}
+            {progresso !== null ? `Importando… ${progresso}/${produtos.length}` : `Importar ${produtos.length} produtos para ${destino === 'catalogo' ? 'o catálogo Natura' : 'Meus produtos'}`}
           </button>
         </>
       )}

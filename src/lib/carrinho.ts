@@ -1,6 +1,9 @@
+import type { Origem } from './types'
+
 export interface ItemCarrinho {
   chave: string
   product_id: string | null
+  origem: Origem | null
   nome: string
   quantidade: number
   precoUnitario: string // texto digitado, ex.: "129,90" (preço vendido, editável)
@@ -33,7 +36,7 @@ export function descontoCarrinho(itens: ItemCarrinho[]): number {
 
 export function adicionar(itens: ItemCarrinho[], novo: Omit<ItemCarrinho, 'chave' | 'quantidade'>): ItemCarrinho[] {
   if (novo.product_id) {
-    const i = itens.findIndex((x) => x.product_id === novo.product_id)
+    const i = itens.findIndex((x) => x.product_id === novo.product_id && x.origem === novo.origem)
     if (i >= 0) return itens.map((x, j) => (j === i ? { ...x, quantidade: x.quantidade + 1 } : x))
   }
   return [...itens, { ...novo, quantidade: 1, chave: crypto.randomUUID() }]

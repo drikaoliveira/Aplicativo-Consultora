@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Customer, CustomerBalance, Entry, PaymentMethod, Product } from './types'
+import type { Customer, CustomerBalance, Entry, Origem, PaymentMethod, Product } from './types'
 
 function check<T>(res: { data: T | null; error: { message: string } | null }): T {
   if (res.error) throw new Error(traduzErro(res.error.message))
@@ -52,6 +52,7 @@ export async function listEntries(customerId: string): Promise<Entry[]> {
 
 export interface SaleItem {
   product_id: string | null
+  origem: Origem | null
   description: string
   quantity: number
   amount: number // valor total da linha
@@ -64,7 +65,8 @@ export async function addSale(customerId: string, items: SaleItem[], occurredOn:
       items.map((i) => ({
         customer_id: customerId,
         kind: 'venda',
-        product_id: i.product_id,
+        product_id: i.origem === 'pessoal' ? i.product_id : null,
+        catalog_product_id: i.origem === 'catalogo' ? i.product_id : null,
         description: i.description,
         quantity: i.quantity,
         amount: i.amount,
@@ -139,58 +141,97 @@ export async function receivedBetween(fromISO: string, toISO: string): Promise<n
 }
 
 // ------------------------------------------------------------- produtos
+// Dois lugares: catálogo central (catalog_products, Natura, igual para todas)
+// e produtos da consultora (products, outras marcas). Na busca e na leitura,
+// o produto pessoal tem prioridade (ela pode ter cadastrado nome/preço próprios).
+
+const TABELA: Record<Origem, string> = { catalogo: 'catalog_products', pessoal: 'products' }
+
+type ProdutoBruto = Omit<Product, 'origem' | 'brand' | 'price'> & { price: number | string | null; brand?: string | null }
+
+function produto(origem: Origem, p: ProdutoBruto): Product {
+  return { ...p, origem, brand: p.brand ?? null, price: p.price === null ? null : Number(p.price) }
+}
+
+export async function isAdmin(): Promise<boolean> {
+  const res = await supabase.rpc('is_admin')
+  return !res.error && res.data === true
+}
 
 export async function findProductByBarcode(barcode: string): Promise<Product | null> {
-  const res = await supabase.from('products').select('*').eq('barcode', barcode).maybeSingle()
-  const p = check(res) as Product | null
-  return p ? { ...p, price: p.price === null ? null : Number(p.price) } : null
+  for (const origem of ['pessoal', 'catalogo'] as Origem[]) {
+    const p = check(await supabase.from(TABELA[origem]).select('*').eq('barcode', barcode).eq('active', true).maybeSingle()) as ProdutoBruto | null
+    if (p) return produto(origem, p)
+  }
+  return null
+}
+
+/** Junta resultados: pessoais primeiro; não repete código de barras que já apareceu. */
+export function juntarProdutos(pessoais: Product[], catalogo: Product[], limite = 20): Product[] {
+  const codigos = new Set(pessoais.map((p) => p.barcode).filter(Boolean))
+  return [...pessoais, ...catalogo.filter((p) => !p.barcode || !codigos.has(p.barcode))].slice(0, limite)
 }
 
 export async function searchProducts(term: string): Promise<Product[]> {
   const t = term.trim()
   if (t.length < 2) return []
-  const like = `%${t.replace(/[%_]/g, '')}%`
-  const rows = check(
-    await supabase
-      .from('products')
+  const like = `%${t.replace(/[%_,()]/g, '')}%`
+  const busca = (origem: Origem) =>
+    supabase
+      .from(TABELA[origem])
       .select('*')
       .eq('active', true)
       .or(`name.ilike.${like},barcode.ilike.${like},code.ilike.${like}`)
       .order('name')
-      .limit(15),
-  ) as Product[]
-  return rows.map((p) => ({ ...p, price: p.price === null ? null : Number(p.price) }))
+      .limit(15)
+  const [a, b] = await Promise.all([busca('pessoal'), busca('catalogo')])
+  const pessoais = (check(a) as ProdutoBruto[]).map((p) => produto('pessoal', p))
+  const catalogo = (check(b) as ProdutoBruto[]).map((p) => produto('catalogo', p))
+  return juntarProdutos(pessoais, catalogo)
 }
 
-export async function saveProduct(p: { barcode: string | null; name: string; price: number | null; code?: string | null }, id?: string): Promise<Product> {
+/** Salva produto. Pessoal: qualquer consultora. Catálogo: só administradora (o banco recusa as demais). */
+export async function saveProduct(
+  p: { barcode: string | null; name: string; price: number | null; code?: string | null },
+  id?: string,
+  origem: Origem = 'pessoal',
+): Promise<Product> {
   const row = { barcode: p.barcode || null, name: p.name.trim(), price: p.price, code: p.code ?? null }
-  if (id) return check(await supabase.from('products').update(row).eq('id', id).select().single()) as Product
-  return check(await supabase.from('products').insert(row).select().single()) as Product
+  const q = supabase.from(TABELA[origem])
+  const r = id ? await q.update(row).eq('id', id).select().single() : await q.insert(row).select().single()
+  return produto(origem, check(r) as ProdutoBruto)
 }
 
-export async function countProducts(): Promise<number> {
-  const res = await supabase.from('products').select('id', { count: 'exact', head: true })
-  if (res.error) throw new Error(traduzErro(res.error.message))
-  return res.count ?? 0
+export async function countProducts(): Promise<{ catalogo: number; pessoal: number }> {
+  const conta = async (origem: Origem) => {
+    const res = await supabase.from(TABELA[origem]).select('id', { count: 'exact', head: true })
+    if (res.error) throw new Error(traduzErro(res.error.message))
+    return res.count ?? 0
+  }
+  const [catalogo, pessoal] = await Promise.all([conta('catalogo'), conta('pessoal')])
+  return { catalogo, pessoal }
 }
 
 /** Importa em lotes; produtos com código de barras já existente são atualizados. */
 export async function importProducts(
   rows: { barcode: string | null; code: string | null; name: string; price: number | null }[],
+  destino: Origem,
   onProgress?: (done: number) => void,
 ): Promise<number> {
+  const tabela = TABELA[destino]
+  const conflito = destino === 'catalogo' ? 'barcode' : 'user_id,barcode'
   const withCode = rows.filter((r) => r.barcode)
   const withoutCode = rows.filter((r) => !r.barcode)
   let done = 0
   for (let i = 0; i < withCode.length; i += 500) {
     const chunk = withCode.slice(i, i + 500)
-    check(await supabase.from('products').upsert(chunk, { onConflict: 'user_id,barcode' }))
+    check(await supabase.from(tabela).upsert(chunk, { onConflict: conflito }))
     done += chunk.length
     onProgress?.(done)
   }
   for (let i = 0; i < withoutCode.length; i += 500) {
     const chunk = withoutCode.slice(i, i + 500)
-    check(await supabase.from('products').insert(chunk))
+    check(await supabase.from(tabela).insert(chunk))
     done += chunk.length
     onProgress?.(done)
   }

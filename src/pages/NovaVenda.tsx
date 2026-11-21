@@ -49,7 +49,7 @@ export default function NovaVenda() {
     try {
       const p = await findProductByBarcode(codigo)
       if (p) {
-        setItens((it) => adicionar(it, { product_id: p.id, nome: p.name, precoUnitario: precoTexto(p.price), precoTabela: p.price }))
+        setItens((it) => adicionar(it, { product_id: p.id, origem: p.origem, nome: p.name, precoUnitario: precoTexto(p.price), precoTabela: p.price }))
         setAviso(`✓ ${p.name}`)
         setTimeout(() => setAviso(null), 2500)
       } else {
@@ -66,7 +66,7 @@ export default function NovaVenda() {
     if (!novoCodigo || !novoNome.trim()) return
     try {
       const p = await saveProduct({ barcode: novoCodigo, name: novoNome, price: parseMoney(novoPreco) })
-      setItens((it) => adicionar(it, { product_id: p.id, nome: p.name, precoUnitario: novoPreco, precoTabela: p.price === null ? null : Number(p.price) }))
+      setItens((it) => adicionar(it, { product_id: p.id, origem: p.origem, nome: p.name, precoUnitario: novoPreco, precoTabela: p.price }))
       setNovoCodigo(null)
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e))
@@ -74,13 +74,13 @@ export default function NovaVenda() {
   }
 
   function escolherProduto(p: Product) {
-    setItens((it) => adicionar(it, { product_id: p.id, nome: p.name, precoUnitario: precoTexto(p.price), precoTabela: p.price }))
+    setItens((it) => adicionar(it, { product_id: p.id, origem: p.origem, nome: p.name, precoUnitario: precoTexto(p.price), precoTabela: p.price }))
     setBusca('')
   }
 
   function adicionarDigitado(nome: string) {
     if (!nome.trim()) return
-    setItens((it) => adicionar(it, { product_id: null, nome: nome.trim(), precoUnitario: '', precoTabela: null }))
+    setItens((it) => adicionar(it, { product_id: null, origem: null, nome: nome.trim(), precoUnitario: '', precoTabela: null }))
     setBusca('')
   }
 
@@ -97,7 +97,7 @@ export default function NovaVenda() {
     try {
       await addSale(
         cliente.id,
-        itens.map((i) => ({ product_id: i.product_id, description: i.nome, quantity: i.quantidade, amount: totalItem(i) })),
+        itens.map((i) => ({ product_id: i.product_id, origem: i.origem, description: i.nome, quantity: i.quantidade, amount: totalItem(i) })),
         data,
       )
       navigate(`/clientes/${cliente.id}`, { replace: true })
@@ -145,7 +145,10 @@ export default function NovaVenda() {
           {achados.map((p) => (
             <button key={p.id} className="cartao" onClick={() => escolherProduto(p)}>
               <div className="item-lista">
-                <div className="nome">{p.name}</div>
+                <div>
+                  <div className="nome">{p.name}</div>
+                  <div className="detalhe">{p.origem === 'catalogo' ? p.brand ?? 'Catálogo' : 'Meus produtos'}</div>
+                </div>
                 <div className="direita">{p.price !== null ? money(p.price) : ''}</div>
               </div>
             </button>
@@ -226,7 +229,7 @@ export default function NovaVenda() {
       <Janela aberta={Boolean(novoCodigo)} fechar={() => setNovoCodigo(null)}>
         <h2>Produto novo</h2>
         <p className="detalhe">
-          Código {novoCodigo} ainda não está cadastrado. Preencha uma vez; da próxima vez o app já reconhece.
+          Código {novoCodigo} não está no catálogo. Preencha uma vez (vai para “Meus produtos”); da próxima vez o app já reconhece.
         </p>
         <label htmlFor="novo-nome">Nome do produto</label>
         <input id="novo-nome" autoFocus value={novoNome} onChange={(e) => setNovoNome(e.target.value)} />

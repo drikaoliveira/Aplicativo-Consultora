@@ -5,6 +5,8 @@ import { codigosEstragados, guessColumns, toProducts } from '../src/lib/csv'
 import { agruparPorBairro } from '../src/lib/cobranca'
 import { adicionar, carrinhoValido, descontoCarrinho, totalCarrinho } from '../src/lib/carrinho'
 import { linhasDaFicha } from '../src/pages/Ficha'
+import { juntarProdutos } from '../src/lib/api'
+import type { Product } from '../src/lib/types'
 import type { CustomerBalance, Entry } from '../src/lib/types'
 
 describe('valores e datas', () => {
@@ -29,7 +31,7 @@ describe('valores e datas', () => {
 })
 
 describe('ficha', () => {
-  const base = { quantity: null, payment_method: null, product_id: null, sale_group: null, reverses_entry_id: null, created_at: '', customer_id: 'c' }
+  const base = { quantity: null, payment_method: null, product_id: null, catalog_product_id: null, sale_group: null, reverses_entry_id: null, created_at: '', customer_id: 'c' }
   it('reproduz a ficha de exemplo: saldo acumulado linha a linha, com estorno', () => {
     const e: Entry[] = [
       { ...base, id: '1', kind: 'venda', description: 'Kaiak', quantity: 2, amount: 185.9, delta: 185.9, occurred_on: '2026-11-01' },
@@ -117,9 +119,9 @@ describe('códigos cortados pelo Excel', () => {
 
 describe('carrinho', () => {
   it('soma quantidade quando o mesmo produto é lido de novo', () => {
-    let it1 = adicionar([], { product_id: 'p1', nome: 'Kaiak', precoUnitario: '129,90', precoTabela: 159.9 })
-    it1 = adicionar(it1, { product_id: 'p1', nome: 'Kaiak', precoUnitario: '129,90', precoTabela: 159.9 })
-    it1 = adicionar(it1, { product_id: null, nome: 'Presente', precoUnitario: '', precoTabela: null })
+    let it1 = adicionar([], { product_id: 'p1', origem: 'catalogo', nome: 'Kaiak', precoUnitario: '129,90', precoTabela: 159.9 })
+    it1 = adicionar(it1, { product_id: 'p1', origem: 'catalogo', nome: 'Kaiak', precoUnitario: '129,90', precoTabela: 159.9 })
+    it1 = adicionar(it1, { product_id: null, origem: null, nome: 'Presente', precoUnitario: '', precoTabela: null })
     expect(it1[0].quantidade).toBe(2)
     expect(carrinhoValido(it1)).toBe('Falta o valor de "Presente".')
     it1[1].precoUnitario = '20'
@@ -127,5 +129,20 @@ describe('carrinho', () => {
     expect(totalCarrinho(it1)).toBe(279.8)
     // promoção: tabela 159,90, vendido 129,90, 2 unidades
     expect(descontoCarrinho(it1)).toBe(60)
+  })
+})
+
+describe('catálogo central + meus produtos', () => {
+  const p = (id: string, origem: 'catalogo' | 'pessoal', barcode: string | null): Product => ({
+    id, origem, brand: origem === 'catalogo' ? 'Natura' : null, barcode, code: null, name: id, price: 10, active: true,
+  })
+  it('mostra os pessoais primeiro e não repete o mesmo código do catálogo', () => {
+    const r = juntarProdutos([p('meu-kaiak', 'pessoal', '789'), p('tupperware', 'pessoal', null)], [p('kaiak', 'catalogo', '789'), p('ekos', 'catalogo', '790')])
+    expect(r.map((x) => x.id)).toEqual(['meu-kaiak', 'tupperware', 'ekos'])
+  })
+  it('mesmo id em origens diferentes não se soma no carrinho', () => {
+    let c = adicionar([], { product_id: 'x', origem: 'catalogo', nome: 'A', precoUnitario: '1', precoTabela: 1 })
+    c = adicionar(c, { product_id: 'x', origem: 'pessoal', nome: 'B', precoUnitario: '1', precoTabela: 1 })
+    expect(c.length).toBe(2)
   })
 })

@@ -20,15 +20,19 @@ repositório da CIP, em `projects/aplicativo-consultora/`.
 - **Código de barras:** lê pela câmera. Se o produto está no catálogo,
   entra com nome e preço (o preço continua editável). Se não está, o app
   pede nome e preço uma vez e guarda.
-- **Catálogo inicial:** importe a planilha do PDV (CSV) em
-  Mais → Importar produtos.
+- **Dois catálogos:**
+  - **Catálogo Natura (central):** um só para todas as consultoras.
+    Todas leem; só administradoras importam/editam.
+  - **Meus produtos:** outras marcas de cada consultora (Tupperware, etc.).
+    Só ela vê. Código lido que não está em nenhum dos dois vira "meu produto".
 
 ## Configuração (uma vez)
 
 ### 1. Supabase
 
 1. Crie um projeto em <https://supabase.com>.
-2. **SQL Editor** → cole e rode `supabase/migrations/0001_inicial.sql`.
+2. **SQL Editor** → cole e rode, **nesta ordem**, cada arquivo de
+   `supabase/migrations/` (`0001_…`, depois `0002_…`).
 3. **Authentication → Users → Add user**: crie o usuário da consultora
    (e-mail e senha), marcando *Auto Confirm User*.
 4. **Authentication → Sign In / Providers**: desligue *Allow new users to
@@ -52,11 +56,24 @@ A chave *anon* é pública por natureza (vai no app); quem protege os dados
 é o Row Level Security do banco. **Nunca** coloque a chave
 *service_role* no app nem no repositório.
 
-### 3. Catálogo do PDV
+### 3. Administradora do catálogo central
+
+Crie o seu usuário (Authentication → Users → Add user) e, no SQL Editor:
+
+```sql
+insert into public.app_admins (user_id)
+select id from auth.users where email = 'SEU-EMAIL-AQUI';
+```
+
+Só administradoras importam ou editam o catálogo Natura.
+
+### 4. Catálogo do PDV
 
 Exporte do PDV os produtos com **código de barras, descrição e preço**,
-salve como **CSV** e importe em *Mais → Importar produtos*, já logada com
-o usuário da consultora (o catálogo é por usuária). O app reconhece
+salve como **CSV** e importe em *Mais → Importar produtos* logada como
+**administradora**, escolhendo **Catálogo Natura**. Todas as consultoras
+passam a ver. Cada consultora importa ou cadastra as outras marcas dela em
+"Meus produtos". O app reconhece
 colunas como "Cód. Barras"/"EAN", "Descrição" e "Preço"; dá para ajustar
 antes de importar. Reimportar atualiza os preços dos produtos que já
 existem (mesmo código de barras).
