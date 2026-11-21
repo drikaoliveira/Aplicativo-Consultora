@@ -2,8 +2,11 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { traduzErro } from '../lib/api'
 
+const CHAVE_EMAIL = 'lembrar-email'
+
 export default function Login() {
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(() => localStorage.getItem(CHAVE_EMAIL) ?? '')
+  const [lembrar, setLembrar] = useState(true)
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
@@ -15,7 +18,9 @@ export default function Login() {
     setEnviando(true)
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: senha })
     setEnviando(false)
-    if (error) setErro(traduzErro(error.message))
+    if (error) return setErro(traduzErro(error.message))
+    if (lembrar) localStorage.setItem(CHAVE_EMAIL, email.trim())
+    else localStorage.removeItem(CHAVE_EMAIL)
   }
 
   async function esqueci() {
@@ -42,7 +47,19 @@ export default function Login() {
         <label htmlFor="email">E-mail</label>
         <input id="email" type="email" inputMode="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <label htmlFor="senha">Senha</label>
-        <input id="senha" type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} required />
+        <input
+          id="senha"
+          type="password"
+          autoComplete="current-password"
+          autoFocus={Boolean(email)}
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+          required
+        />
+        <label className="check" style={{ fontWeight: 400 }}>
+          <input type="checkbox" checked={lembrar} onChange={(e) => setLembrar(e.target.checked)} />
+          Lembrar meu e-mail neste celular
+        </label>
         {erro && <p className="erro">{erro}</p>}
         {aviso && <p className="sucesso">{aviso}</p>}
         <div className="pilha" style={{ marginTop: 20 }}>
