@@ -33,7 +33,7 @@ export default function Login() {
       redirectTo: window.location.origin + '/nova-senha',
     })
     if (error) setErro(traduzErro(error.message))
-    else setAviso('Enviamos um e-mail com um link para criar uma senha nova.')
+    else setAviso('Enviamos um e-mail com um link para criar uma senha nova. Pode demorar alguns minutos; olhe também o Spam. Não toque de novo: cada toque envia outro e-mail.')
   }
 
   return (

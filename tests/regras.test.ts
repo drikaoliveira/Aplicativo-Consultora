@@ -6,7 +6,7 @@ import { agruparPorBairro } from '../src/lib/cobranca'
 import { adicionar, carrinhoValido, descontoCarrinho, totalCarrinho } from '../src/lib/carrinho'
 import { linhasDaFicha } from '../src/pages/Ficha'
 import { validarNovaSenha } from '../src/pages/TrocarSenha'
-import { juntarProdutos } from '../src/lib/api'
+import { juntarProdutos, traduzErro } from '../src/lib/api'
 import type { Product } from '../src/lib/types'
 import type { CustomerBalance, Entry } from '../src/lib/types'
 
@@ -176,5 +176,12 @@ describe('importar clientes', () => {
       ['Cliente B', 0, false, null],
       ['Cliente C', 0, true, null],
     ])
+  })
+})
+
+describe('mensagens de erro', () => {
+  it('traduz o limite de e-mails do Supabase', () => {
+    expect(traduzErro('email rate limit exceeded')).toMatch(/Espere cerca de 1 hora/)
+    expect(traduzErro('Invalid login credentials')).toBe('E-mail ou senha incorretos.')
   })
 })

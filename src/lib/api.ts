@@ -10,6 +10,9 @@ export function traduzErro(msg: string): string {
   if (/Invalid login credentials/i.test(msg)) return 'E-mail ou senha incorretos.'
   if (/Failed to fetch|NetworkError/i.test(msg)) return 'Sem internet. Tente de novo.'
   if (/JWT expired/i.test(msg)) return 'Sua sessão expirou. Entre de novo.'
+  if (/rate limit/i.test(msg))
+    return 'Muitos e-mails de troca de senha em pouco tempo. Espere cerca de 1 hora e tente de novo, ou peça para quem cadastrou definir uma senha nova.'
+  if (/Email not confirmed/i.test(msg)) return 'Este e-mail ainda não foi confirmado. Peça para quem cadastrou confirmar o usuário.'
   return msg
 }
 
