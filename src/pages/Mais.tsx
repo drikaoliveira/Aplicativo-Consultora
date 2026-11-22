@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
-import { exportAll } from '../lib/api'
+import { exportAll, isAdmin } from '../lib/api'
 import { supabase } from '../lib/supabase'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Papa from 'papaparse'
 
 function baixar(nome: string, conteudo: string) {
@@ -15,6 +15,13 @@ function baixar(nome: string, conteudo: string) {
 
 export default function Mais() {
   const [msg, setMsg] = useState<string | null>(null)
+  const [email, setEmail] = useState<string | null>(null)
+  const [admin, setAdmin] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null))
+    isAdmin().then(setAdmin)
+  }, [])
 
   async function exportar() {
     setMsg('Preparando…')
@@ -39,6 +46,12 @@ export default function Mais() {
   return (
     <div className="page">
       <h1>☰ Mais</h1>
+      {email && (
+        <p className="detalhe" style={{ marginBottom: 14 }}>
+          Entrou como <b>{email}</b>
+          {admin && <> · <span className="etiqueta verde">administradora do catálogo</span></>}
+        </p>
+      )}
       <div className="pilha">
         <Link className="btn claro" to="/passar-fichas">📋 Passar fichas de papel</Link>
         <Link className="btn claro" to="/produtos">🧴 Produtos</Link>
