@@ -9,10 +9,12 @@ export default function Clientes() {
   const { dados, erro, carregando } = useCarregar(listBalances)
   const [termo, setTermo] = useState('')
   const [inativas, setInativas] = useState(false)
+  const [semBairro, setSemBairro] = useState(false)
   const lista = useMemo(
-    () => filtrarClientes((dados ?? []).filter((c) => c.active !== inativas), termo),
-    [dados, termo, inativas],
+    () => filtrarClientes((dados ?? []).filter((c) => c.active !== inativas && (!semBairro || !c.neighborhood?.trim())), termo),
+    [dados, termo, inativas, semBairro],
   )
+  const qtdSemBairro = (dados ?? []).filter((c) => c.active && !c.neighborhood?.trim()).length
 
   return (
     <div className="page">
@@ -25,6 +27,11 @@ export default function Clientes() {
       <div className="busca">
         <input placeholder="🔎 Nome, telefone ou bairro" value={termo} onChange={(e) => setTermo(e.target.value)} />
       </div>
+      {(qtdSemBairro > 0 || semBairro) && (
+        <button className={'btn pequeno ' + (semBairro ? '' : 'claro')} style={{ marginBottom: 10 }} onClick={() => setSemBairro(!semBairro)}>
+          {semBairro ? 'Mostrar todas' : `⚠️ ${qtdSemBairro} sem bairro — completar`}
+        </button>
+      )}
       {erro && <p className="erro">{erro}</p>}
       {carregando && <p className="carregando">Carregando…</p>}
       {!carregando && lista.length === 0 && <p className="vazio">Nenhuma cliente encontrada.</p>}

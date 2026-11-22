@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { daysBetween, money, parseMoney, dateBR } from '../src/lib/format'
 import { mapsRouteLink, whatsappNumber, chargeMessage } from '../src/lib/links'
-import { codigosEstragados, guessColumns, toProducts } from '../src/lib/csv'
+import { codigosEstragados, guessColumns, guessColunasCliente, toClientes, toProducts } from '../src/lib/csv'
 import { agruparPorBairro } from '../src/lib/cobranca'
 import { adicionar, carrinhoValido, descontoCarrinho, totalCarrinho } from '../src/lib/carrinho'
 import { linhasDaFicha } from '../src/pages/Ficha'
@@ -155,5 +155,26 @@ describe('trocar senha', () => {
     expect(validarNovaSenha('123456', 'abcdef', 'abcdeg')).toMatch(/não estão iguais/)
     expect(validarNovaSenha('123456', '123456', '123456')).toMatch(/igual à atual/)
     expect(validarNovaSenha('123456', 'flor2026', 'flor2026')).toBeNull()
+  })
+})
+
+describe('importar clientes', () => {
+  it('reconhece colunas e converte saldos', () => {
+    const cols = guessColunasCliente(['Nome', 'Saldo', 'Bairro', 'Telefone', 'Observação da leitura'])
+    expect(cols).toMatchObject({ name: 'Nome', balance: 'Saldo', neighborhood: 'Bairro', phone: 'Telefone', notes: 'Observação da leitura' })
+    const c = toClientes(
+      [
+        { Nome: 'Cliente A', Saldo: '119,80', Bairro: 'Floresta', Telefone: '', 'Observação da leitura': '' },
+        { Nome: 'Cliente B', Saldo: '', Bairro: '', Telefone: '', 'Observação da leitura': '' },
+        { Nome: 'Cliente C', Saldo: '1?9,80', Bairro: '', Telefone: '', 'Observação da leitura': 'conferir' },
+        { Nome: '', Saldo: '10', Bairro: '', Telefone: '', 'Observação da leitura': '' },
+      ],
+      cols,
+    )
+    expect(c.map((x) => [x.name, x.balance, x.balanceInvalido, x.neighborhood])).toEqual([
+      ['Cliente A', 119.8, false, 'Floresta'],
+      ['Cliente B', 0, false, null],
+      ['Cliente C', 0, true, null],
+    ])
   })
 })

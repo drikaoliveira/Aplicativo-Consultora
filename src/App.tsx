@@ -18,6 +18,7 @@ import PassarFichas from './pages/PassarFichas'
 import Mais from './pages/Mais'
 import Produtos from './pages/Produtos'
 import ImportarProdutos from './pages/ImportarProdutos'
+import ImportarClientes from './pages/ImportarClientes'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -67,6 +68,7 @@ export default function App() {
         <Route path="/mais" element={<Mais />} />
         <Route path="/produtos" element={<Produtos />} />
         <Route path="/produtos/importar" element={<ImportarProdutos />} />
+        <Route path="/clientes/importar" element={<ImportarClientes />} />
         <Route path="/nova-senha" element={<NovaSenha />} />
         <Route path="/trocar-senha" element={<TrocarSenha />} />
         <Route path="*" element={<Navigate to="/" replace />} />

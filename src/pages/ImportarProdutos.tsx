@@ -7,7 +7,7 @@ import { money } from '../lib/format'
 import Topo from '../components/Topo'
 
 /** Arquivos de PDV costumam vir em Windows-1252; tenta UTF-8 primeiro. */
-async function lerTexto(file: File): Promise<string> {
+export async function lerTexto(file: File): Promise<string> {
   const buf = await file.arrayBuffer()
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(buf)

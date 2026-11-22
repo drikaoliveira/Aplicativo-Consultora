@@ -54,6 +54,7 @@ export default function Mais() {
       )}
       <div className="pilha">
         <Link className="btn claro" to="/passar-fichas">📋 Passar fichas de papel</Link>
+        <Link className="btn claro" to="/clientes/importar">📥 Importar clientes (planilha)</Link>
         <Link className="btn claro" to="/produtos">🧴 Produtos</Link>
         <Link className="btn claro" to="/produtos/importar">📥 Importar produtos (planilha)</Link>
         <button className="btn claro" onClick={exportar}>💾 Baixar cópia dos dados</button>
