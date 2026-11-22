@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { addOpeningBalance, getBalance, listEntries, reverseEntry } from '../lib/api'
+import { addOpeningBalance, getBalance, getCustomer, listEntries, reverseEntry } from '../lib/api'
 import { dateBR, money, parseMoney, todayISO } from '../lib/format'
 import { addressText, hasAddress, mapsSearchLink } from '../lib/links'
 import { PAYMENT_LABEL, type Entry } from '../lib/types'
@@ -32,8 +32,8 @@ function historico(e: Entry): string {
 export default function Ficha() {
   const { id = '' } = useParams()
   const { dados, erro, carregando, recarregar } = useCarregar(async () => {
-    const [cliente, entries] = await Promise.all([getBalance(id), listEntries(id)])
-    return { cliente, linhas: linhasDaFicha(entries) }
+    const [cliente, entries, cadastro] = await Promise.all([getBalance(id), listEntries(id), getCustomer(id)])
+    return { cliente, notas: cadastro.notes, linhas: linhasDaFicha(entries) }
   }, [id])
   const [corrigir, setCorrigir] = useState<Linha | null>(null)
   const [motivo, setMotivo] = useState('')
@@ -69,7 +69,7 @@ export default function Ficha() {
 
   if (carregando && !dados) return <div className="carregando">Carregando…</div>
   if (erro || !dados) return <div className="page"><Topo titulo="Ficha" /><p className="erro">{erro}</p></div>
-  const { cliente: c, linhas } = dados
+  const { cliente: c, linhas, notas } = dados
 
   return (
     <div className="page">
@@ -84,6 +84,13 @@ export default function Ficha() {
         {!c.active && <> · <span className="etiqueta amarela">inativa</span></>}
       </p>
       {hasAddress(c) && <p className="detalhe">{addressText(c)}{c.reference ? ` (${c.reference})` : ''}</p>}
+
+      {notas && (
+        <details className="cartao" style={{ marginTop: 8 }}>
+          <summary className="detalhe" style={{ cursor: 'pointer' }}>📝 Observações</summary>
+          <p style={{ whiteSpace: 'pre-wrap', marginTop: 8 }}>{notas}</p>
+        </details>
+      )}
 
       <div className={'saldo-topo ' + (c.balance > 0 ? 'deve' : 'zerado')}>
         <div className="rotulo">{c.balance > 0 ? 'Deve' : 'Saldo'}</div>
