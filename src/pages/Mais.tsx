@@ -61,6 +61,7 @@ export default function Mais() {
         <Link className="btn claro" to="/trocar-senha">🔑 Trocar minha senha</Link>
         {msg && <p className="detalhe">{msg}</p>}
         <button className="btn contorno" onClick={() => supabase.auth.signOut()}>Sair</button>
+        <p className="detalhe" style={{ textAlign: 'center' }}>Versão {__VERSAO__}</p>
       </div>
     </div>
   )
