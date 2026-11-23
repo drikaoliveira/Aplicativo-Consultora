@@ -1,3 +1,4 @@
+import Papa from 'papaparse'
 import { normalize, onlyDigits, parseMoney } from './format'
 
 export interface ColumnGuess {
@@ -143,4 +144,34 @@ export function toClientes(rows: Record<string, string>[], cols: ColunasCliente)
     })
   }
   return out
+}
+
+/**
+ * Descobre o separador olhando só a linha de cabeçalho (fora de aspas).
+ * A detecção automática do Papa pode errar quando as observações têm
+ * muitas vírgulas (valores como 129,90), e aí tudo cai numa coluna só.
+ */
+export function detectarSeparador(texto: string): string {
+  const semBom = texto.replace(/^﻿/, '').replace(/^ï»¿/, '')
+  const primeira = semBom.split(/\r?\n/, 1)[0] ?? ''
+  const conta: Record<string, number> = { ';': 0, ',': 0, '\t': 0 }
+  let aspas = false
+  for (const ch of primeira) {
+    if (ch === '"') aspas = !aspas
+    else if (!aspas && ch in conta) conta[ch]++
+  }
+  const [melhor, qtd] = Object.entries(conta).sort((a, b) => b[1] - a[1])[0]
+  return qtd > 0 ? melhor : ';'
+}
+
+/** Lê o CSV com cabeçalho, usando o separador detectado e limpando o BOM. */
+export function lerCsv(texto: string): { colunas: string[]; linhas: Record<string, string>[] } {
+  const limpo = texto.replace(/^﻿/, '').replace(/^ï»¿/, '')
+  const r = Papa.parse<Record<string, string>>(limpo, {
+    header: true,
+    skipEmptyLines: true,
+    delimiter: detectarSeparador(limpo),
+    transformHeader: (h) => h.trim(),
+  })
+  return { colunas: r.meta.fields ?? [], linhas: r.data }
 }

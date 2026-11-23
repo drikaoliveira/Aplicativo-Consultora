@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import Papa from 'papaparse'
 import { addOpeningBalance, listBalances, saveCustomer } from '../lib/api'
-import { guessColunasCliente, toClientes, type ColunasCliente } from '../lib/csv'
+import { guessColunasCliente, toClientes, type ColunasCliente, lerCsv } from '../lib/csv'
 import { money, normalize, todayISO } from '../lib/format'
 import { lerTexto } from './ImportarProdutos'
 import Topo from '../components/Topo'
@@ -33,10 +32,9 @@ export default function ImportarClientes() {
     setMsg(null)
     if (/\.xlsx?$/i.test(file.name)) return setErro('Este arquivo é do Excel. Use "Salvar como" → "CSV" e escolha o arquivo .csv aqui.')
     const texto = await lerTexto(file)
-    const r = Papa.parse<Record<string, string>>(texto, { header: true, skipEmptyLines: true })
-    const cols = r.meta.fields ?? []
+    const { colunas: cols, linhas: dadosCsv } = lerCsv(texto)
     setColunas(cols)
-    setLinhas(r.data)
+    setLinhas(dadosCsv)
     setMapa(guessColunasCliente(cols))
     const atuais = await listBalances()
     setExistentes(new Set(atuais.map((c) => normalize(c.name))))

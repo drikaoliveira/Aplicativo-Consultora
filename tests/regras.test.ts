@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { daysBetween, money, parseMoney, dateBR } from '../src/lib/format'
 import { mapsRouteLink, whatsappNumber, chargeMessage } from '../src/lib/links'
-import { codigosEstragados, guessColumns, guessColunasCliente, toClientes, toProducts } from '../src/lib/csv'
+import { codigosEstragados, detectarSeparador, guessColumns, guessColunasCliente, lerCsv, toClientes, toProducts } from '../src/lib/csv'
 import { agruparPorBairro } from '../src/lib/cobranca'
 import { adicionar, carrinhoValido, descontoCarrinho, totalCarrinho } from '../src/lib/carrinho'
 import { linhasDaFicha } from '../src/pages/Ficha'
@@ -183,5 +183,19 @@ describe('mensagens de erro', () => {
   it('traduz o limite de e-mails do Supabase', () => {
     expect(traduzErro('email rate limit exceeded')).toMatch(/Espere cerca de 1 hora/)
     expect(traduzErro('Invalid login credentials')).toBe('E-mail ou senha incorretos.')
+  })
+})
+
+describe('separador do CSV', () => {
+  it('usa ponto e vírgula mesmo com muitas vírgulas nas observações', () => {
+    const t = '\ufeffNome;Saldo;Observações\nAna;10,00;"a, b, c, d, e, f, g, h"\nBia;5,50;1,00 · 2,00 · 3,00 · 4,00\n'
+    expect(detectarSeparador(t)).toBe(';')
+    const r = lerCsv(t)
+    expect(r.colunas).toEqual(['Nome', 'Saldo', 'Observações'])
+    expect(r.linhas[1].Saldo).toBe('5,50')
+  })
+  it('aceita vírgula e tab', () => {
+    expect(detectarSeparador('EAN,Descrição,Preço\n1,a,2')).toBe(',')
+    expect(detectarSeparador('EAN\tDescrição\n1\ta')).toBe('\t')
   })
 })

@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
-import Papa from 'papaparse'
 import { importProducts, isAdmin } from '../lib/api'
 import type { Origem } from '../lib/types'
-import { codigosEstragados, guessColumns, toProducts, type ColumnGuess } from '../lib/csv'
+import { codigosEstragados, guessColumns, toProducts, type ColumnGuess, lerCsv } from '../lib/csv'
 import { money } from '../lib/format'
 import Topo from '../components/Topo'
 
@@ -49,10 +48,9 @@ export default function ImportarProdutos() {
       return
     }
     const texto = await lerTexto(file)
-    const r = Papa.parse<Record<string, string>>(texto, { header: true, skipEmptyLines: true })
-    const cols = r.meta.fields ?? []
+    const { colunas: cols, linhas: dadosCsv } = lerCsv(texto)
     setColunas(cols)
-    setLinhas(r.data)
+    setLinhas(dadosCsv)
     setMapa(guessColumns(cols))
   }
 
